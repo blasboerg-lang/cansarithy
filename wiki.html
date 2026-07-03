@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cansaritma Mods Wiki</title>
+    <style>
+        body { background: #121212; color: #d4d4d4; font-family: 'Courier New', monospace; margin: 0; display: flex; }
+        
+        /* SOL TARAFTAKİ MENÜ */
+        #sidebar { width: 280px; background: #1a1a1a; height: 100vh; padding: 20px; border-right: 3px solid #6aa84f; flex-shrink: 0; transition: 0.3s; }
+        #content { flex-grow: 1; padding: 40px; transition: 0.3s; }
+        
+        /* GİZLEME SINIFI */
+        .hidden { display: none !important; }
+        
+        #search-box { width: 100%; padding: 10px; margin-bottom: 5px; background: #000; border: 1px solid #6aa84f; color: #fff; box-sizing: border-box; }
+        .search-btn { width: 100%; padding: 8px; margin-bottom: 20px; background: #6aa84f; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        
+        button { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #252525; color: #fff; border: 1px solid #6aa84f; cursor: pointer; text-align: left; }
+        button:hover { background: #6aa84f; color: #000; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        h1 { color: #6aa84f; text-shadow: 2px 2px #5500aa; }
+        h2 { color: #5500aa; border-bottom: 1px solid #6aa84f; padding-bottom: 5px; margin-top: 30px; }
+        .thumbnail { max-width: 400px; border: 3px solid #6aa84f; margin-bottom: 20px; }
+        code { background: #000; color: #00ff00; padding: 2px 5px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <img src="minecraft_title (2).png" style="width:100%" alt="Logo">
+    <input type="text" id="search-box" placeholder="Search articles..." onkeypress="if(event.key==='Enter') performSearch()">
+    <button class="search-btn" onclick="performSearch()">SEARCH</button>
+    
+    <button onclick="window.location.reload()">Main Page</button>
+    <button onclick="showPage('mods')">Cansaritma Mods</button>
+    <button onclick="window.open('https://github.com/blasboerg-lang/cansarithy/issues', '_blank')">🛠 Issues & Forum</button>
+</div>
+
+<div id="content">
+    <div id="home" class="page active">
+        <h1>Welcome to Cansaritma Mods Wiki</h1>
+        <p>Explore the official documentation for Cansaritma mods.</p>
+    </div>
+
+    <div id="mods" class="page">
+        <h1>Cansaritma Mods</h1>
+        <button onclick="showPage('creepy_colorful')">Creepy Colorful</button>
+    </div>
+
+    <div id="creepy_colorful" class="page">
+        <h1>Creepy Colorful</h1>
+        <img src="https://static.wikia.nocookie.net/cansaritma-mods/images/d/d1/CreepyColorfulMCMODThumbnail2.png/revision/latest?cb=20260703174055" class="thumbnail">
+        
+        <h2>Entities</h2>
+        <p><b>All Creepers:</b> Features various custom creeper types with unique AI behaviors, custom sounds, and modified textures to enhance the "creepy" atmosphere.</p>
+        
+        <h2>Scripts</h2>
+        <ul>
+            <li><code>CreeperColorfulRightclickedOnEntity.java</code>: Handles custom interaction logic triggered when a player interacts with entities via right-click.</li>
+            <li><code>CreeperDespawn.java</code>: Manages the lifecycle and automatic despawn triggers for creepers to ensure optimal server performance.</li>
+        </ul>
+        
+        <h2>Advancements</h2>
+        <p><b>Wigmaker:</b> An achievement milestone earned by players through specific crafting or entity-interaction sequences defined within the mod's progression path.</p>
+    </div>
+</div>
+
+<script>
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        
+        // Creepy Colorful'a basınca menüyü gizle
+        let sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('hidden', pageId === 'creepy_colorful');
+    }
+
+    function performSearch() {
+        let input = document.getElementById('search-box').value.trim().toLowerCase();
+        if (input === "") { window.location.reload(); return; }
+        document.querySelectorAll('.page').forEach(page => {
+            page.style.display = page.innerText.toLowerCase().includes(input) ? "block" : "none";
+        });
+    }
+</script>
+
+</body>
+</html>
