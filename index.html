@@ -48,24 +48,7 @@
 
     <div id="mods" class="page">
         <h1>Cansaritma Mods</h1>
-        <button onclick="showPage('creepy_colorful')">Creepy Colorful</button>
-    </div>
-
-    <div id="creepy_colorful" class="page">
-        <h1>Creepy Colorful</h1>
-        <img src="./assets/creepy_colorful.png" class="thumbnail">
-        
-        <h2>Entities</h2>
-        <p><b>All Creepers:</b> Features various custom creeper types with unique AI behaviors, custom sounds, and modified textures to enhance the "creepy" atmosphere.</p>
-        
-        <h2>Scripts</h2>
-        <ul>
-            <li><code>CreeperColorfulRightclickedOnEntity.java</code>: Handles custom interaction logic triggered when a player interacts with entities via right-click.</li>
-            <li><code>CreeperDespawn.java</code>: Manages the lifecycle and automatic despawn triggers for creepers to ensure optimal server performance.</li>
-        </ul>
-        
-        <h2>Advancements</h2>
-        <p><b>Wigmaker:</b> An achievement milestone earned by players through specific crafting or entity-interaction sequences defined within the mod's progression path.</p>
+        <button onclick="window.location.href='https://orneksite.com/creepy-colorful'">Creepy Colorful</button>
     </div>
 </div>
 
@@ -74,9 +57,9 @@
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         
-        // Creepy Colorful'a basınca menüyü gizle
         let sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('hidden', pageId === 'creepy_colorful');
+        // Creepy Colorful artık bir sayfa olmadığı için sidebar gizleme mantığına gerek kalmadı
+        sidebar.classList.remove('hidden');
     }
 
     function performSearch() {
