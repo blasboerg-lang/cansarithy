@@ -1,1 +1,1 @@
-Go to wiki.
+It's all files of Creepy Colorful.
