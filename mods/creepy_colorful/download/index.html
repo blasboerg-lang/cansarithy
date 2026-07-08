@@ -84,76 +84,125 @@
         .btn-download:hover {
             background-color: #45a049;
         }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+            font-style: italic;
+        }
+        .error-box {
+            background: #442222;
+            color: #ff8888;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #ff4444;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1 id="title">creepy_colorful Files</h1>
-    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="showMainPage()">mods/creepy_colorful</span></div>
+    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadLiveServerFiles('mods/creepy_colorful')">mods/creepy_colorful</span></div>
     
+    <div id="loading" class="loading">Scanning server directory dynamically...</div>
     <ul class="file-list" id="fileList"></ul>
 </div>
 
 <script>
-    const fileListElement = document.getElementById('fileList');
-    const breadcrumbElement = document.getElementById('breadcrumb');
+    const user = "blasboerg-lang";
+    const repo = "cansarithy";
+    const baseDir = "mods/creepy_colorful";
 
-    // 1. ANA SAYFA LİSTESİ (index.html ve download klasörü senin istediğin gibi gizli)
-    function showMainPage() {
-        breadcrumbElement.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
-        fileListElement.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📁</span><a class="folder-link" onclick="showOldReleasesPage()">old-releases</a></div>
-                <span style="color: #888; font-size: 12px;">Folder</span>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📁</span><a class="folder-link" onclick="showPreviewPage()">preview</a></div>
-                <span style="color: #888; font-size: 12px;">Folder</span>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>README.md</span></div>
-                <a href="README.md" class="btn-download" target="_blank">Download</a>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.2-neoforge-1.21.8.jar</span></div>
-                <a href="creepycolorful-1.1.2-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-        `;
+    async function loadLiveServerFiles(targetPath) {
+        const fileListElement = document.getElementById('fileList');
+        const loadingElement = document.getElementById('loading');
+        const breadcrumbElement = document.getElementById('breadcrumb');
+        
+        fileListElement.innerHTML = '';
+        loadingElement.style.display = 'block';
+
+        if (targetPath === baseDir) {
+            breadcrumbElement.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
+        } else {
+            const relativeSub = targetPath.replace(baseDir + '/', '');
+            breadcrumbElement.innerHTML = `Directory: <span onclick="loadLiveServerFiles('${baseDir}')">mods/creepy_colorful</span> / <strong>${relativeSub}</strong>`;
+        }
+
+        try {
+            // Tarayıcının URL bozma hatasını önlemek için native URL Constructor kullandık
+            const baseApi = "https://github.com";
+            const endpoint = `/repos/${user}/${repo}/contents/${targetPath}`;
+            const finalUrl = new URL(endpoint, baseApi).toString();
+            
+            const response = await fetch(finalUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
+
+            if (!response.ok) {
+                throw new Error("Server returned HTTP " + response.status);
+            }
+
+            // Gelen veri %100 dinamiktir. Depoya yeni dosya attığında anında buraya düşer.
+            const serverItems = await response.json();
+            loadingElement.style.display = 'none';
+
+            serverItems.forEach(item => {
+                const nameLower = item.name.toLowerCase();
+
+                // İstediğin filtre: Ana dizinde index.html ve download klasörünü gizle
+                if (targetPath === baseDir) {
+                    if (nameLower === 'index.html' || nameLower === 'download') {
+                        return;
+                    }
+                }
+
+                const li = document.createElement('li');
+                li.className = 'file-item';
+
+                // Klasörler dinamik olarak tıklandığında içini tarar (old-releases içindeki 3 dosya otomatik gelir)
+                if (item.type === 'dir') {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📁</span>
+                            <a class="folder-link" onclick="loadLiveServerFiles('${item.path}')">${item.name}</a>
+                        </div>
+                        <span style="color: #888; font-size: 12px;">Folder</span>
+                    `;
+                } 
+                // Dosyalar ve indirme butonları tamamen dinamik listelenir
+                else {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📄</span>
+                            <span>${item.name}</span>
+                        </div>
+                        <a href="${item.download_url}" class="btn-download" target="_blank">Download</a>
+                    `;
+                }
+                fileListElement.appendChild(li);
+            });
+
+            if (fileListElement.children.length === 0) {
+                fileListElement.innerHTML = '<li class="file-item">No files found.</li>';
+            }
+
+        } catch (error) {
+            loadingElement.style.display = 'none';
+            fileListElement.innerHTML = `
+                <div class="error-box">
+                    <strong>Dynamic Sync Error:</strong><br>
+                    ${error.message}<br><br>
+                    <small>İnternet bağlantınızı kontrol edin veya sayfayı zorla yenilemek için <strong>Ctrl + F5</strong> yapın.</small>
+                </div>
+            `;
+        }
     }
 
-    // 2. OLD-RELEASES SAYFASI (Bahsettiğin 3 dosyanın tamamı burada, sunucu linklerine bağlı)
-    function showOldReleasesPage() {
-        breadcrumbElement.innerHTML = `Directory: <span onclick="showMainPage()">mods/creepy_colorful</span> / <strong>old-releases</strong>`;
-        fileListElement.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.2-neoforge-1.21.8.jar</span></div>
-                <a href="old-releases/creepycolorful-1.1.2-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.1-neoforge-1.21.8.jar</span></div>
-                <a href="old-releases/creepycolorful-1.1.1-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.0-neoforge-1.21.8.jar</span></div>
-                <a href="old-releases/creepycolorful-1.1.0-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-        `;
-    }
-
-    // 3. PREVIEW SAYFASI
-    function showPreviewPage() {
-        breadcrumbElement.innerHTML = `Directory: <span onclick="showMainPage()">mods/creepy_colorful</span> / <strong>preview</strong>`;
-        fileListElement.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>preview_creeper.png</span></div>
-                <a href="preview/preview.png" class="btn-download" target="_blank">View</a>
-            </li>
-        `;
-    }
-
-    // Başlangıç tetiklemesi
-    showMainPage();
+    // İlk çalıştırma
+    loadLiveServerFiles(baseDir);
 </script>
 
 </body>
