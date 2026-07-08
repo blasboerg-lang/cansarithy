@@ -90,25 +90,28 @@
             color: #aaa;
             font-style: italic;
         }
+        .error-box {
+            background: #442222;
+            color: #ff8888;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #ff4444;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1 id="title">creepy_colorful Files</h1>
-    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadLiveDirectory('mods/creepy_colorful')">mods/creepy_colorful</span></div>
+    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadLiveRepo('mods/creepy_colorful')">mods/creepy_colorful</span></div>
     
-    <div id="loading" class="loading">Reading live files from repository stream...</div>
+    <div id="loading" class="loading">Loading files from live server...</div>
     <ul class="file-list" id="fileList"></ul>
 </div>
 
 <script>
-    // Kullanıcı ve depo bilgileri
-    const user = "blasboerg-lang";
-    const repository = "cansarithy";
-    const mainPath = "mods/creepy_colorful";
-
-    async function loadLiveDirectory(targetPath) {
+    async function loadLiveRepo(targetPath) {
         const fileListElement = document.getElementById('fileList');
         const loadingElement = document.getElementById('loading');
         const breadcrumbElement = document.getElementById('breadcrumb');
@@ -116,81 +119,81 @@
         fileListElement.innerHTML = '';
         loadingElement.style.display = 'block';
 
-        // Breadcrumb navigasyon güncellemesi
-        if (targetPath === mainPath) {
+        if (targetPath === 'mods/creepy_colorful') {
             breadcrumbElement.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
         } else {
-            const relativeSub = targetPath.replace(mainPath + '/', '');
-            breadcrumbElement.innerHTML = `Directory: <span onclick="loadLiveDirectory('${mainPath}')">mods/creepy_colorful</span> / <strong>${relativeSub}</strong>`;
+            const relativeSub = targetPath.replace('mods/creepy_colorful/', '');
+            breadcrumbElement.innerHTML = `Directory: <span onclick="loadLiveRepo('mods/creepy_colorful')">mods/creepy_colorful</span> / <strong>${relativeSub}</strong>`;
         }
 
         try {
-            // Çöken tırnak işaretlerini ve hatalı URL birleştirmelerini engellemek için temiz JavaScript şablonu
-            const secureApiUrl = "https://github.com" + user + "/" + repository + "/contents/" + targetPath;
+            // Hata ihtimalini sıfırlamak için statik, birleşik tam API adresi
+            const apiUrl = 'https://github.com' + targetPath;
             
-            const response = await fetch(secureApiUrl, {
+            const response = await fetch(apiUrl, {
                 method: 'GET',
                 headers: { 'Accept': 'application/vnd.github.v3+json' }
             });
 
             if (!response.ok) {
-                throw new Error("HTTP error " + response.status);
+                throw new Error('Server API Error! Status: ' + response.status);
             }
 
-            const serverData = await response.json();
+            const data = await response.json();
             loadingElement.style.display = 'none';
 
-            // Gelen dizi verisini doğrudan ekrana basıyoruz (Tamamen sunucu kontrollü)
-            serverData.forEach(file => {
-                const nameLower = file.name.toLowerCase();
-
-                // İstediğin filtre: Ana dizinde index.html ve download klasörünü gösterme
-                if (targetPath === mainPath) {
+            data.forEach(item => {
+                const nameLower = item.name.toLowerCase();
+                
+                // Filtreleme: Ana klasördeyken index.html ve download'ı gizle
+                if (targetPath === 'mods/creepy_colorful') {
                     if (nameLower === 'index.html' || nameLower === 'download') {
-                        return;
+                        return; 
                     }
                 }
 
                 const li = document.createElement('li');
                 li.className = 'file-item';
 
-                // Eğer klasörse tıklandığında içini canlı tarasın
-                if (file.type === 'dir') {
+                if (item.type === 'dir') {
                     li.innerHTML = `
                         <div class="file-info">
                             <span class="icon">📁</span>
-                            <a class="folder-link" onclick="loadLiveDirectory('${file.path}')">${file.name}</a>
+                            <a class="folder-link" onclick="loadLiveRepo('${item.path}')">${item.name}</a>
                         </div>
                         <span style="color: #888; font-size: 12px;">Folder</span>
                     `;
-                } 
-                // Dosyaysa (Olası 3 adet old-releases .jar dosyaları dahil) otomatik buraya düşer
-                else {
+                } else if (item.type === 'file') {
                     li.innerHTML = `
                         <div class="file-info">
                             <span class="icon">📄</span>
-                            <span>${file.name}</span>
+                            <span>${item.name}</span>
                         </div>
-                        <a href="${file.download_url}" class="btn-download" target="_blank">Download</a>
+                        <a href="${item.download_url}" class="btn-download" target="_blank">Download</a>
                     `;
                 }
+
                 fileListElement.appendChild(li);
             });
 
+            if (fileListElement.children.length === 0) {
+                fileListElement.innerHTML = '<li class="file-item">No files found.</li>';
+            }
+
         } catch (error) {
             loadingElement.style.display = 'none';
-            // Tarayıcının hatalı yönlendirmesini kırmak için yedek alternatif veri yöntemi (Bypass JSONP)
             fileListElement.innerHTML = `
-                <li class="file-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="color: #ff5252; font-weight: bold;">Browser network loop detected. Please use the direct stream bypass link:</span>
-                    <a href="https://github.com{user}/${repository}/tree/main/${targetPath}" class="folder-link" target="_blank">👉 Open Live Repository Folder (${targetPath})</a>
-                </li>
+                <div class="error-box">
+                    <strong>API Loading Error:</strong><br>
+                    ${error.message}<br><br>
+                    <small>Yedek Doğrudan Link: <a href="https://github.com{targetPath}" target="_blank" style="color:#ffb74d;">GitHub Klasörünü Aç</a></small>
+                </div>
             `;
         }
     }
 
-    // İlk açılış tetiklemesi
-    loadLiveDirectory(mainPath);
+    // İlk tetikleme
+    loadLiveRepo('mods/creepy_colorful');
 </script>
 
 </body>
