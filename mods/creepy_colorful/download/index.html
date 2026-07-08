@@ -90,22 +90,32 @@
             color: #aaa;
             font-style: italic;
         }
+        .error-box {
+            background: #442222;
+            color: #ff8888;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #ff4444;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1 id="title">creepy_colorful Files</h1>
-    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadDirectory('.')">mods/creepy_colorful</span></div>
+    <!-- Geri dönüş linki için statik parametre yollandı -->
+    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadDirectoryFromGitHub('mods/creepy_colorful')">mods/creepy_colorful</span></div>
     
-    <div id="loading" class="loading">Scanning Render server directory...</div>
+    <div id="loading" class="loading">Fetching live repository directory from server...</div>
     <ul class="file-list" id="fileList"></ul>
 </div>
 
 <script>
-    // GitHub API'yi tamamen çöpe attık! 
-    // Render sunucusunun kendi klasör yapısını (Server Directory Index) tarıyoruz.
-    async function loadDirectory(dirPath) {
+    // Kök dizini tam metin olarak tanımlıyoruz
+    const rootPath = "mods/creepy_colorful";
+
+    async function loadDirectoryFromGitHub(targetPath) {
         const fileListElement = document.getElementById('fileList');
         const loadingElement = document.getElementById('loading');
         const breadcrumbElement = document.getElementById('breadcrumb');
@@ -113,102 +123,86 @@
         fileListElement.innerHTML = '';
         loadingElement.style.display = 'block';
 
-        if (dirPath === '.') {
+        // Navigasyon başlığını dinamik güncelle
+        if (targetPath === rootPath) {
             breadcrumbElement.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
         } else {
-            breadcrumbElement.innerHTML = `Directory: <span onclick="loadDirectory('.')">mods/creepy_colorful</span> / <strong>${dirPath}</strong>`;
+            const relativeSub = targetPath.replace(rootPath + '/', '');
+            breadcrumbElement.innerHTML = `Directory: <span onclick="loadDirectoryFromGitHub('${rootPath}')">mods/creepy_colorful</span> / <strong>${relativeSub}</strong>`;
         }
 
         try {
-            // Render.com sunucusundaki klasörün ham HTML listesini çekiyoruz
-            const response = await fetch(dirPath + '/');
-            const htmlText = await response.json().catch(() => response.text());
+            // URL çakışmalarını önlemek için temiz, tam adres API endpoint'i
+            const url = `https://github.com{targetPath}`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server returned status code: ${response.status}`);
+            }
+            
+            // Veriyi alıyoruz (Tamamen dinamik, sunucudan ne gelirse o listelenir)
+            const data = await response.json();
             loadingElement.style.display = 'none';
 
-            // Eğer Render otomatik directory listing (JSON) veriyorsa direkt işle
-            if (typeof htmlText === 'object') {
-                processServerData(htmlText, dirPath);
-                return;
-            }
-
-            // Eğer HTML liste sayfası veriyorsa içindeki linkleri (A taglerini) ayıkla
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
-            const links = Array.from(doc.querySelectorAll('a'));
-            
-            const detectedItems = [];
-
-            links.forEach(link => {
-                const href = link.getAttribute('href');
-                const name = link.textContent.replace('/', '').trim();
+            data.forEach(item => {
+                const nameLower = item.name.toLowerCase();
                 
-                // Üst dizin linklerini ve gereksizleri eliyoruz
-                if (!href || href.startsWith('?') || href.startsWith('/') || name === '..' || name === 'Parent Directory' || !name) {
-                    return;
+                // İSTEDİĞİN FİLTRELER: Ana dizindeysek index.html ve download klasörünü gizle
+                if (targetPath === rootPath) {
+                    if (nameLower === 'index.html' || nameLower === 'download') {
+                        return; 
+                    }
                 }
 
-                // Render klasörleri genellikle sonundaki '/' işaretiyle belli eder
-                const isDir = href.endsWith('/') || link.textContent.includes('/');
-                
-                detectedItems.push({
-                    name: name,
-                    type: isDir ? 'dir' : 'file',
-                    path: dirPath === '.' ? name : dirPath + '/' + name
-                });
+                const li = document.createElement('li');
+                li.className = 'file-item';
+
+                // Klasör yapısı (old-releases dahil dinamik olarak tıklandığında içeri girer)
+                if (item.type === 'dir') {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📁</span>
+                            <a class="folder-link" onclick="loadDirectoryFromGitHub('${item.path}')">${item.name}</a>
+                        </div>
+                        <span style="color: #888; font-size: 12px;">Folder</span>
+                    `;
+                } 
+                // Dosyalar ve indirme butonları (Gelecekte ekleyeceğin tüm .jar'lar otomatik buraya gelir)
+                else if (item.type === 'file') {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📄</span>
+                            <span>${item.name}</span>
+                        </div>
+                        <a href="${item.download_url}" class="btn-download" target="_blank">Download</a>
+                    `;
+                }
+
+                fileListElement.appendChild(li);
             });
 
-            processServerData(detectedItems, dirPath);
+            if (fileListElement.children.length === 0) {
+                fileListElement.innerHTML = '<li class="file-item">Directory is empty.</li>';
+            }
 
         } catch (error) {
             loadingElement.style.display = 'none';
-            fileListElement.innerHTML = `<li class="file-item" style="color: #ff5252;">Error scanning server directory. Please deploy to Render to see live files.</li>`;
-            console.error(error);
+            fileListElement.innerHTML = `
+                <div class="error-box">
+                    <strong>Live Fetch Error:</strong><br>
+                    ${error.message}<br><br>
+                    <small>Make sure you view this page on your deployed Render URL to bypass local restrictions.</small>
+                </div>
+            `;
         }
     }
 
-    function processServerData(items, dirPath) {
-        const fileListElement = document.getElementById('fileList');
-        
-        items.forEach(item => {
-            const nameLower = item.name.toLowerCase();
-            
-            // Ana dizinde index.html ve download klasörünü gizleme kuralı
-            if (dirPath === '.') {
-                if (nameLower === 'index.html' || nameLower === 'download') {
-                    return;
-                }
-            }
-
-            const li = document.createElement('li');
-            li.className = 'file-item';
-
-            if (item.type === 'dir') {
-                li.innerHTML = `
-                    <div class="file-info">
-                        <span class="icon">📁</span>
-                        <a class="folder-link" onclick="loadDirectory('${item.path}')">${item.name}</a>
-                    </div>
-                    <span style="color: #888; font-size: 12px;">Folder</span>
-                `;
-            } else {
-                li.innerHTML = `
-                    <div class="file-info">
-                        <span class="icon">📄</span>
-                        <span>${item.name}</span>
-                    </div>
-                    <a href="${item.path}" class="btn-download" download>Download</a>
-                `;
-            }
-            fileListElement.appendChild(li);
-        });
-
-        if (fileListElement.children.length === 0) {
-            fileListElement.innerHTML = '<li class="file-item">No files found.</li>';
-        }
-    }
-
-    // Başlangıç tetiklemesi
-    loadDirectory('.');
+    // İlk tetikleme
+    loadDirectoryFromGitHub(rootPath);
 </script>
 
 </body>
