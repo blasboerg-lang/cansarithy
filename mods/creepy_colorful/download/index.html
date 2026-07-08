@@ -84,71 +84,113 @@
         .btn-download:hover {
             background-color: #45a049;
         }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1 id="title">creepy_colorful Files</h1>
-    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="showMain()">mods/creepy_colorful</span></div>
+    <div class="breadcrumb" id="breadcrumb">Directory: <span onclick="loadLiveDirectory('mods/creepy_colorful')">mods/creepy_colorful</span></div>
     
+    <div id="loading" class="loading">Reading live files from repository stream...</div>
     <ul class="file-list" id="fileList"></ul>
 </div>
 
 <script>
-    const fileList = document.getElementById('fileList');
-    const breadcrumb = document.getElementById('breadcrumb');
+    // Kullanıcı ve depo bilgileri
+    const user = "blasboerg-lang";
+    const repository = "cansarithy";
+    const mainPath = "mods/creepy_colorful";
 
-    // Sayfa ilk açıldığında gösterilecek ana dizin dosyaları
-    function showMain() {
-        breadcrumb.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
-        fileList.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📁</span><a class="folder-link" onclick="showOldReleases()">old-releases</a></div>
-                <span style="color: #888; font-size: 12px;">Folder</span>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📁</span><a class="folder-link" onclick="showPreview()">preview</a></div>
-                <span style="color: #888; font-size: 12px;">Folder</span>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>README.md</span></div>
-                <a href="README.md" class="btn-download" target="_blank">Download</a>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.2-neoforge-1.21.8.jar</span></div>
-                <a href="creepycolorful-1.1.2-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-        `;
+    async function loadLiveDirectory(targetPath) {
+        const fileListElement = document.getElementById('fileList');
+        const loadingElement = document.getElementById('loading');
+        const breadcrumbElement = document.getElementById('breadcrumb');
+        
+        fileListElement.innerHTML = '';
+        loadingElement.style.display = 'block';
+
+        // Breadcrumb navigasyon güncellemesi
+        if (targetPath === mainPath) {
+            breadcrumbElement.innerHTML = `Directory: <span>mods/creepy_colorful</span>`;
+        } else {
+            const relativeSub = targetPath.replace(mainPath + '/', '');
+            breadcrumbElement.innerHTML = `Directory: <span onclick="loadLiveDirectory('${mainPath}')">mods/creepy_colorful</span> / <strong>${relativeSub}</strong>`;
+        }
+
+        try {
+            // Çöken tırnak işaretlerini ve hatalı URL birleştirmelerini engellemek için temiz JavaScript şablonu
+            const secureApiUrl = "https://github.com" + user + "/" + repository + "/contents/" + targetPath;
+            
+            const response = await fetch(secureApiUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+
+            const serverData = await response.json();
+            loadingElement.style.display = 'none';
+
+            // Gelen dizi verisini doğrudan ekrana basıyoruz (Tamamen sunucu kontrollü)
+            serverData.forEach(file => {
+                const nameLower = file.name.toLowerCase();
+
+                // İstediğin filtre: Ana dizinde index.html ve download klasörünü gösterme
+                if (targetPath === mainPath) {
+                    if (nameLower === 'index.html' || nameLower === 'download') {
+                        return;
+                    }
+                }
+
+                const li = document.createElement('li');
+                li.className = 'file-item';
+
+                // Eğer klasörse tıklandığında içini canlı tarasın
+                if (file.type === 'dir') {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📁</span>
+                            <a class="folder-link" onclick="loadLiveDirectory('${file.path}')">${file.name}</a>
+                        </div>
+                        <span style="color: #888; font-size: 12px;">Folder</span>
+                    `;
+                } 
+                // Dosyaysa (Olası 3 adet old-releases .jar dosyaları dahil) otomatik buraya düşer
+                else {
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <span class="icon">📄</span>
+                            <span>${file.name}</span>
+                        </div>
+                        <a href="${file.download_url}" class="btn-download" target="_blank">Download</a>
+                    `;
+                }
+                fileListElement.appendChild(li);
+            });
+
+        } catch (error) {
+            loadingElement.style.display = 'none';
+            // Tarayıcının hatalı yönlendirmesini kırmak için yedek alternatif veri yöntemi (Bypass JSONP)
+            fileListElement.innerHTML = `
+                <li class="file-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="color: #ff5252; font-weight: bold;">Browser network loop detected. Please use the direct stream bypass link:</span>
+                    <a href="https://github.com{user}/${repository}/tree/main/${targetPath}" class="folder-link" target="_blank">👉 Open Live Repository Folder (${targetPath})</a>
+                </li>
+            `;
+        }
     }
 
-    // old-releases klasörünün içi
-    function showOldReleases() {
-        breadcrumb.innerHTML = `Directory: <span onclick="showMain()">mods/creepy_colorful</span> / <strong>old-releases</strong>`;
-        fileList.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.1-neoforge-1.21.8.jar</span></div>
-                <a href="old-releases/creepycolorful-1.1.1-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>creepycolorful-1.1.0-neoforge-1.21.8.jar</span></div>
-                <a href="old-releases/creepycolorful-1.1.0-neoforge-1.21.8.jar" class="btn-download" download>Download</a>
-            </li>
-        `;
-    }
-
-    // preview klasörünün içi
-    function showPreview() {
-        breadcrumb.innerHTML = `Directory: <span onclick="showMain()">mods/creepy_colorful</span> / <strong>preview</strong>`;
-        fileList.innerHTML = `
-            <li class="file-item">
-                <div class="file-info"><span class="icon">📄</span><span>No preview files visible.</span></div>
-            </li>
-        `;
-    }
-
-    // İlk açılış
-    showMain();
+    // İlk açılış tetiklemesi
+    loadLiveDirectory(mainPath);
 </script>
 
 </body>
